@@ -1,5 +1,12 @@
 package main
 
+import (
+	"errors"
+	"strconv"
+	"strings"
+	"unicode"
+)
+
 /*
 === Задача на распаковку ===
 
@@ -18,44 +25,47 @@ package main
 Функция должна проходить все тесты. Код должен проходить проверки go vet и golint.
 */
 
-func main() {
+// UnpackString осуществляет распаковку строки с повторами символов и поддержкой escape-последовательностей
+func UnpackString(input string) (string, error) {
+	var result strings.Builder
+	runes := []rune(input)
+	escaped := false
 
-}
+	for i := 0; i < len(runes); i++ {
+		curr := runes[i]
 
-func unboxLine(line []rune) ([]rune, bool) {
-	res := make([]rune, 0)
-	last := ' '
-
-	for i := 0; i < len(line); i++ {
-		current := line[i]
-		if last == ' ' && isNumber(current) {
-			return nil, false
-		}
-		if last == ' ' && isLetter(current) {
-			last = current
+		// Если встретили escape (\), то переходим в режим escaped
+		if curr == '\\' && !escaped {
+			escaped = true
 			continue
 		}
-		if last == ' ' && current == '/' {
-			last = '/'
+
+		// Если текущий символ цифра, проверяем, является ли он частью escape-последовательности или нет
+		if unicode.IsDigit(curr) {
+			if i == 0 || (!escaped && unicode.IsDigit(runes[i-1])) {
+				return "", errors.New("invalid string: starts with or contains consecutive numbers without letters")
+			}
+
+			count, _ := strconv.Atoi(string(curr))
+			result.WriteString(strings.Repeat(string(runes[i-1]), count-1)) // -1, т.к. 1 раз символ уже добавлен
+			escaped = false
+			continue
 		}
+
+		// Если это обычный символ или escaped символ
+		result.WriteRune(curr)
+		escaped = false
 	}
 
-	return res
+	return result.String(), nil
 }
 
-func printRuneKOnce(k rune, numsCount int) []rune {
-	numsK := make([]rune, numsCount)
-	for i := 0; i < numsCount; i++ {
-		numsK = append(numsK, k)
+func main() {
+	// Пример использования
+	unpacked, err := UnpackString(`a4bc2d5e`)
+	if err != nil {
+		println("Error:", err.Error())
+	} else {
+		println("Unpacked string:", unpacked)
 	}
-
-	return numsK
-}
-
-func isNumber(r rune) bool {
-	return byte(r) >= 48 && byte(r) <= 57
-}
-
-func isLetter(r rune) bool {
-	return byte(r) >= 97 && byte(r) <= 122
 }
