@@ -10,15 +10,20 @@ import (
 // Функция для запуска main с тестовыми данными и флагами
 func runGrep(input string, args ...string) string {
 	// Создаем pipe для захвата вывода
-	r, w, _ := os.Pipe()
+	rOut, wOut, _ := os.Pipe() // Pipe для стандартного вывода
+	rIn, wIn, _ := os.Pipe()   // Pipe для стандартного ввода
 
 	// Сохраняем стандартный вывод и ввод
 	oldStdout := os.Stdout
 	oldStdin := os.Stdin
 
 	// Подменяем стандартный ввод и вывод
-	os.Stdout = w
-	os.Stdin = bytes.NewReader([]byte(input))
+	os.Stdout = wOut
+	os.Stdin = rIn
+
+	// Пишем входные данные в pipe для stdin
+	wIn.Write([]byte(input))
+	wIn.Close()
 
 	// Устанавливаем флаги
 	os.Args = append([]string{"grep"}, args...)
@@ -27,16 +32,17 @@ func runGrep(input string, args ...string) string {
 	main()
 
 	// Восстанавливаем стандартный вывод и ввод
-	w.Close()
+	wOut.Close()
 	os.Stdout = oldStdout
 	os.Stdin = oldStdin
 
 	// Читаем результат из pipe
 	var buf bytes.Buffer
-	io.Copy(&buf, r)
+	io.Copy(&buf, rOut)
 
 	return buf.String()
 }
+
 
 // Тест для проверки основного функционала поиска строки
 func TestBasicSearch(t *testing.T) {
